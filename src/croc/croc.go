@@ -1415,12 +1415,16 @@ func (c *Client) processMessageFileInfo(m message.Message) (done bool, err error
 	for i, fi := range c.FilesToTransfer {
 		// Issues #593 - sanitize the sender paths and prevent ".." from being used
 		c.FilesToTransfer[i].FolderRemote = filepath.Clean(fi.FolderRemote)
+		// Strip invisible/non-graphic runes (ZWSP U+200B, ZWNJ, ZWJ, BOM, control chars)
+		// so files from e.g. iOS Voice Memos / Telegram are accepted on the receiver.
+		c.FilesToTransfer[i].Name = utils.SanitizeFileName(fi.Name)
+		c.FilesToTransfer[i].FolderRemote = utils.SanitizeFileName(c.FilesToTransfer[i].FolderRemote)
 		// Issues #593 - disallow specific folders like .ssh
 		if strings.Contains(c.FilesToTransfer[i].FolderRemote, ".ssh") {
 			return true, fmt.Errorf("invalid path detected: '%s'", fi.FolderRemote)
 		}
 		// Issue #595 - disallow filenames with invisible characters
-		errFileName := utils.ValidFileName(path.Join(c.FilesToTransfer[i].FolderRemote, fi.Name))
+		errFileName := utils.ValidFileName(path.Join(c.FilesToTransfer[i].FolderRemote, c.FilesToTransfer[i].Name))
 		if errFileName != nil {
 			return true, errFileName
 		}

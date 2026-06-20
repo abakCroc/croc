@@ -266,6 +266,9 @@ func TestValidFileName(t *testing.T) {
 	err := ValidFileName("D中文.cslouglas​")
 	assert.NotNil(t, err)
 	assert.Equal(t, "non-graphical unicode: e2808b U+8203 in '44e4b8ade696872e63736c6f75676c6173e2808b'", err.Error())
+	// after sanitizing the ZWSP, the filename should be valid
+	assert.Equal(t, "D中文.cslouglas", SanitizeFileName("D中文.cslouglas​"))
+	assert.Nil(t, ValidFileName(SanitizeFileName("D中文.cslouglas​")))
 	// contains "..", but not next to a path separator
 	assert.Nil(t, ValidFileName("hi..txt"))
 	// contains "..", but only next to a path separator on one side
@@ -281,6 +284,22 @@ func TestValidFileName(t *testing.T) {
 	assert.NotNil(t, ValidFileName(".."))
 	// is an absolute path
 	assert.NotNil(t, ValidFileName(path.Join(string(os.PathSeparator), "abs", string(os.PathSeparator), "hi.txt")))
+}
+
+func TestSanitizeFileName(t *testing.T) {
+	// removes zero-width space (U+200B), ZWNJ (U+200C), ZWJ (U+200D) and BOM (U+FEFF)
+	assert.Equal(t, "a.m4a", SanitizeFileName("a\u200B.m4a"))
+	assert.Equal(t, "ab", SanitizeFileName("a\u200Cb"))
+	assert.Equal(t, "ab", SanitizeFileName("a\u200Db"))
+	assert.Equal(t, "file.txt", SanitizeFileName("\uFEFFfile.txt"))
+	// ZWSP U+8203 (e2 80 8b) - the actual iOS Voice Memos / Telegram case
+	assert.Equal(t, "8 июн._ 17.07.m4a", SanitizeFileName("8 июн._ 17.07\u200B.m4a"))
+	// keeps normal characters incl. CJK, Cyrillic, emoji, spaces
+	assert.Equal(t, "中文.csl Оля 😀.flac", SanitizeFileName("中文.csl Оля 😀.flac"))
+	// strips control characters but keeps printable ones
+	assert.Equal(t, "hi", SanitizeFileName("h\x00i\x07"))
+	// sanitized result must always pass ValidFileName
+	assert.Nil(t, ValidFileName(SanitizeFileName("a\u200B.m4a")))
 }
 
 // zip

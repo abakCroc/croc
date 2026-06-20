@@ -788,6 +788,20 @@ func resolveUnzipPath(destination string, entryName string) (string, error) {
 	return filePath, nil
 }
 
+// SanitizeFileName removes invisible/non-graphic/non-print runes (e.g. ZWSP
+// U+200B, ZWNJ U+200C, ZWJ U+200D, BOM U+FEFF, control characters) from fname.
+// All other runes (including CJK, Cyrillic, emoji, spaces, '.', '-', '_') are kept.
+func SanitizeFileName(fname string) string {
+	var b strings.Builder
+	b.Grow(len(fname))
+	for _, r := range fname {
+		if unicode.IsGraphic(r) && unicode.IsPrint(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // ValidFileName checks if a filename is valid
 // by making sure it has no invisible characters
 func ValidFileName(fname string) (err error) {
